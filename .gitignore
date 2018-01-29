@@ -1,0 +1,11 @@
+*.pyc
+*.zip
+*~
+__pycache__
+myvenv
+db.sqlite3
+/static
+.DS_Store
+/vagrant
+env/
+env2.7/
