@@ -1,11 +1,12 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import cgi
 
+# import CRUD Operations from Lesson 1
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Restaurant, MenuItem
 
-
+# Create session and connect to DB
 engine = create_engine("sqlite:///restaurantmenu.db")
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
@@ -15,6 +16,7 @@ session = DBSession()
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
+             # Objective 3 Step 2 - Create /restarants/new page
             if self.path.endswith("/restaurants/new"):
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html')
@@ -30,17 +32,41 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 self.wfile.write(output)
                 return
 
+            if self.path.endswith('/edit'):
+                restaurantIDPath = self.path.split('/')[2]
+                myRestaurentQuery = session.query(
+                    Restaurant).filter_by(id=restaurantIDPath).one()
+                if myRestaurentQuery:
+                    self.send_response(200)
+                    self.send_header('content-type', 'text/html')
+                    self.end_headers()
+                    output = "<html><body>"
+                    output += "<h1>"
+                    output += myRestaurentQuery.name
+                    output += "</h1>"
+                    output += "<form method='POST' enctype='multipart/form-data' action='/restarants/{}/edit' >".format(
+                        restaurantIDPath)
+                    output += "<input name='newRestaurantName' type='text' placeholder={}>".format(
+                        myRestaurentQuery.name)
+                    output += "<input type='submit' value='Rename'>"
+                    output += "</form></body></html>"
+                    self.wfile.write(output)
+
             if self.path.endswith("/restaurants"):
                 restaurants = session.query(Restaurant).all()
                 output = ""
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html')
                 self.end_headers()
+                # Objective 3 Step 1 - Create a Link to create a new menu item
                 output += "<a href = '/restaurants/new' > Make a New Restaurant Here </a></br></br>"
                 for restaurant in restaurants:
                     output += restaurant.name
                     output += "</br>"
-                    output += "<a href='/edit'>Edit</a>&nbsp<a href='/delete'>Delete</a>"
+                    # Objective 2 -- Add Edit and Delete Links
+                    # Objective 4 -- Replace Edit href
+                    output += "<a href='/restarants/{0}/edit'>Edit</a>&nbsp<a href='#'>Delete</a>".format(
+                        restaurant.id)
                     output += "</br></br>"
                 output += "</body></html>"
 
@@ -51,9 +77,28 @@ class WebServerHandler(BaseHTTPRequestHandler):
         except IOError:
             self.send_error(404, "File not Found {}".self.path)
 
+    # Objective 3 Step 3- Make POST method
     def do_POST(self):
-        # import pdb; pdb.set_trace()
         try:
+            if self.path.endswith('/edit'):
+                # import pdb; pdb.set_trace()
+                ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
+                if ctype == 'multipart/form-data':
+                    fields = cgi.parse_multipart(self.rfile, pdict)
+                    messagecontent = fields.get('newRestaurantName')
+                    restaurantIDPath = self.path.split('/')[2]
+
+                    myRestaurentQuery = session.query(Restaurant).filter_by(id=restaurantIDPath).one()
+                    if myRestaurentQuery != []:
+                        myRestaurentQuery.name = messagecontent[0]
+                        session.add(myRestaurentQuery)
+                        session.commit()
+
+                        self.send_response(301)
+                        self.send_header('Content-type', 'text/html')
+                        self.send_header('Location', '/restaurants')
+                        self.end_headers()
+
             if self.path.endswith("/restaurants/new"):
                 ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
                 if ctype == 'multipart/form-data':
@@ -72,6 +117,7 @@ class WebServerHandler(BaseHTTPRequestHandler):
 
         except:
             pass
+
 
 def main():
     try:
