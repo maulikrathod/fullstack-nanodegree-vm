@@ -34,8 +34,7 @@ class WebServerHandler(BaseHTTPRequestHandler):
 
             if self.path.endswith('/edit'):
                 restaurantIDPath = self.path.split('/')[2]
-                myRestaurentQuery = session.query(
-                    Restaurant).filter_by(id=restaurantIDPath).one()
+                myRestaurentQuery = session.query(Restaurant).filter_by(id=restaurantIDPath).one()
                 if myRestaurentQuery:
                     self.send_response(200)
                     self.send_header('content-type', 'text/html')
@@ -46,9 +45,23 @@ class WebServerHandler(BaseHTTPRequestHandler):
                     output += "</h1>"
                     output += "<form method='POST' enctype='multipart/form-data' action='/restarants/{}/edit' >".format(
                         restaurantIDPath)
-                    output += "<input name='newRestaurantName' type='text' placeholder={}>".format(
-                        myRestaurentQuery.name)
+                    output += "<input name='newRestaurantName' type='text' placeholder={}>".format(myRestaurentQuery.name)
                     output += "<input type='submit' value='Rename'>"
+                    output += "</form></body></html>"
+                    self.wfile.write(output)
+
+            if self.path.endswith('/delete'):
+                restaurantIDPath = self.path.split('/')[2]
+                myRestaurentQuery = session.query(Restaurant).filter_by(id=restaurantIDPath).one()
+                if myRestaurentQuery:
+                    self.send_response(200)
+                    self.send_header('content-type', 'text/html')
+                    self.end_headers()
+                    output = "<html><body>"
+                    output += "<h1>Are you sure you want to delete {} ?</h1>".format(myRestaurentQuery.name)
+                    output += "<form method='POST' enctype='multipart/form-data' action='/restarants/{}/delete' >".format(
+                        restaurantIDPath)
+                    output += "<input type='submit' value='Delete'>"
                     output += "</form></body></html>"
                     self.wfile.write(output)
 
@@ -65,8 +78,8 @@ class WebServerHandler(BaseHTTPRequestHandler):
                     output += "</br>"
                     # Objective 2 -- Add Edit and Delete Links
                     # Objective 4 -- Replace Edit href
-                    output += "<a href='/restarants/{0}/edit'>Edit</a>&nbsp<a href='#'>Delete</a>".format(
-                        restaurant.id)
+                    output += "<a href='/restarants/{0}/edit'>Edit</a>&nbsp<a href='/restarants/{1}/delete'>Delete</a>".format(
+                        restaurant.id, restaurant.id)
                     output += "</br></br>"
                 output += "</body></html>"
 
@@ -98,6 +111,18 @@ class WebServerHandler(BaseHTTPRequestHandler):
                         self.send_header('Content-type', 'text/html')
                         self.send_header('Location', '/restaurants')
                         self.end_headers()
+
+            if self.path.endswith('/delete'):
+                restaurantIDPath = self.path.split('/')[2]
+                myRestaurentQuery = session.query(Restaurant).filter_by(id=restaurantIDPath).one()
+                if myRestaurentQuery:
+                    session.delete(myRestaurentQuery)
+                    session.commit()
+                    
+                    self.send_response(301)
+                    self.send_header('Content-type', 'text/html')
+                    self.send_header('Location', '/restaurants')
+                    self.end_headers()
 
             if self.path.endswith("/restaurants/new"):
                 ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
